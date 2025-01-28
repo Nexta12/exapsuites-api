@@ -1,0 +1,81 @@
+name: Integration Workflow
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH connection
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.USER_NAME }}
+          key: ${{ secrets.SEVER_SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            set -e
+
+            # export NVM_DIR="$HOME/.nvm"
+            # [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This grabs nvm
+            # nvm install 18
+            # nvm use 18
+
+            echo "Changing directory to /www/wwwroot/api/exapsuites"
+            if ! cd /www/wwwroot/api/exapsuites; then
+              echo "Failed to change directory"
+              exit 1
+            fi
+            echo "Reseting Local Changes"
+              if ! git reset --hard; then
+                  echo "Failed to reset local changes"
+                  exit 1;
+              fi
+            echo "Pulling latest code from origin/main"
+            if ! git pull origin main; then
+              echo "Failed to pull latest code"
+              exit 1
+            fi
+            echo "Installing dependencies"
+            if ! npm install; then
+              echo "Couldn't install packages"
+              exit 1
+            fi
+            echo "Restarting Application"
+            if ! npm start; then
+               echo "Couldn't restart application"
+               exit 1
+            fi
+            echo "Deployment successful"
+
+
