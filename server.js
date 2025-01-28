@@ -95,7 +95,7 @@ const allowedOrigins = [
 
 app.get('/', (req, res)=>{
 
-    res.send("Welcome to Exapsuites api test page")
+    res.send("Welcome to Exapsuites api")
 })
 app.use('/api/secure', require('./server/routes/auth'))
 app.use('/api/user', require('./server/routes/user'))
