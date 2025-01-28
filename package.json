@@ -5,8 +5,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "deploy": "pm2 start server.js --name 'exapsuitesapi'",
+    "start": "pm2 restart 'exapsuitesapi'"
   },
   "author": "Mr Ernest Udeze",
   "license": "MIT",
