@@ -1,16 +1,13 @@
  const calculateTotalPrice = (startDate, endDate, costPerNight) => {
+    try {
+      
     // Parse the dates to ensure they are valid Date objects
     const start = new Date(startDate);
     const end = new Date(endDate);
   
     // Check if the dates are valid
     if (isNaN(start) || isNaN(end)) {
-      throw new Error("Invalid startDate or endDate");
-    }
-  
-    // Ensure the endDate is after the startDate
-    if (end <= start) {
-      throw new Error("endDate must be after startDate");
+       return res.status(422).send('Invalid Dates')
     }
   
     // Calculate the number of nights
@@ -19,5 +16,10 @@
   
     // Calculate the total price
     return numberOfNights * costPerNight;
+
+  } catch (error) {
+      console.log(error);
+      res.status(422).json(error.message)
+  }
   };
 module.exports = calculateTotalPrice

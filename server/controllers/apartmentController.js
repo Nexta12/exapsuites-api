@@ -1,10 +1,12 @@
+const { deleteFromCloudinary } = require("../middlewares/fileUploadManager");
 const Apartment = require("../models/Apartment");
 
 module.exports = {
   createApartment: async (req, res) => {
     try {
+  
       const newApartment = await Apartment.create(req.body);
-
+   
       res.status(201).json(newApartment);
     } catch (error) {
       console.log(error);
@@ -48,7 +50,9 @@ module.exports = {
     const { id } = req.params;
 
     try {
-      await Apartment.findByIdAndDelete(id);
+     const apartmentToDelete = await Apartment.findByIdAndDelete(id);
+     deleteFromCloudinary(apartmentToDelete.images);
+
       res.status(201).json("Deleted");
     } catch (error) {
       console.log(error);

@@ -10,6 +10,8 @@ const { initialize } = require('./utils/passport');
 const passport = require("passport");
 const cookieParser = require("cookie-parser");
 const MongoStore = require("connect-mongo");
+const fileUpload = require("express-fileupload");
+const path = require('path')
 
 
 const port = process.env.PORT || 3000
@@ -62,7 +64,20 @@ const allowedOrigins = [
   
     // Load body parser
     app.use(express.urlencoded({ extended: false }));
-    app.use(express.json())
+    app.use(express.json());
+
+
+      //  file upload Config
+      app.use(
+        fileUpload({
+          useTempFiles: true,
+          tempFileDir: path.join(__dirname, "tmp"),
+          createParentPath: true,
+          limits: {
+            fileSize: 6 * 1024 * 1024 * 8, // 6mb max
+          },
+        }),
+      );
 
 
     app.use(
@@ -102,6 +117,7 @@ app.use('/api/user', require('./server/routes/user'))
 app.use('/api/apartment', require('./server/routes/apartment'))
 app.use('/api/booking', require('./server/routes/booking'))
 app.use('/api/notification', require('./server/routes/notification.routes'))
+app.use('/api/contact', require('./server/routes/contact.routes'))
 
 app.use((req, res) => {
   res.send("Page Not Found");

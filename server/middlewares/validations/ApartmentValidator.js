@@ -8,7 +8,7 @@ module.exports = {
       const { title, price } = req.body;
 
       if (!title || title === "") {
-        return res.status(422).send("Please provide Apartment Title");
+        return res.status(422).send("Please provide Apartment Name");
       }
 
       req.body.title = title.toLowerCase().trim();
@@ -25,7 +25,7 @@ module.exports = {
       }
 
       if (!price || price === "") {
-        return res.status(422).send("Please provide Apartment price ");
+        return res.status(422).send("Please provide Apartment price per night ");
       }
 
       next();

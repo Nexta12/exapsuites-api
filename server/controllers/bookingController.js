@@ -71,7 +71,7 @@ module.exports = {
       });
 
       // Update apartment's booking status to "booked"
-      apartmentToBook.bookingStatus = "reserved";
+      apartmentToBook.bookingStatus = "Booking Initiated";
       await apartmentToBook.save();
 
       res.status(201).json(newBooking);
@@ -82,7 +82,9 @@ module.exports = {
   },
 
   ConfirmBooking: async (req, res) => {
-    const { bookingId, firstName, lastName, email, phone, password, address } =
+    const { bookingId } = req.params;
+
+    const { firstName, lastName, email, phone, password, address } =
       req.body;
 
     try {
@@ -198,13 +200,12 @@ module.exports = {
         }
 
         returnedResponse = body.data; // set returned response data to a re-usable variable
-        res.send(returnedResponse.authorization_url);
-        // res.status(200).json({
-        //   redirect_url: returnedResponse.authorization_url,
-        //   access_code: returnedResponse.access_code,
-        //   reference: returnedResponse.reference,
-        //   success: true,
-        // });
+        res.status(200).json({
+          redirect_url: returnedResponse.authorization_url,
+          access_code: returnedResponse.access_code,
+          reference: returnedResponse.reference,
+          success: true,
+        });
       });
     } catch (error) {
       console.error(error);
@@ -215,13 +216,15 @@ module.exports = {
     try {
       const reference = req.query.reference;
 
+     
+
       // Check if this payment has been previously verified
       const confirmedBooking = await Booking.findOne({reference, 
         status: 'completed'})
 
-        // if(confirmedBooking){
-        //   return res.status(422).json('Payment previously confirmed')
-        // }
+        if(confirmedBooking){
+          return res.status(422).json('Payment previously confirmed')
+        }
 
       // Verify Payment Reference
       await verifyPayment(reference, async (error, body) => {
@@ -234,7 +237,7 @@ module.exports = {
 
         const { reference, paid_at } = returnedResponse;
         const { apartmentId, Invoice, bookingId, userId } = returnedResponse.metadata;
-     
+
         // Update Booking in Database
         await Booking.findByIdAndUpdate(
           bookingId,
@@ -271,6 +274,8 @@ module.exports = {
         // Send Both Dashboard and Email Notifications
 
         const booking = await Booking.findById(bookingId).populate("apartmentId");
+       
+
         const user = {
           firstName: booking.contactInfo.firstName,
           lastName: booking.contactInfo.lastName,
@@ -282,6 +287,7 @@ module.exports = {
 
         res.status(200).json("Payment Successfull");
       });
+
     } catch (error) {
       console.log(error);
       res.status(500).json(error);
@@ -289,7 +295,7 @@ module.exports = {
   },
   getAllBookings: async (req, res) => {
     try {
-      const bookings = await Booking.find({}).sort({ createdAt: "desc" });
+      const bookings = await Booking.find({}).populate('apartmentId').sort({ createdAt: "desc" });
 
       res.status(200).json(bookings);
     } catch (error) {
@@ -300,7 +306,7 @@ module.exports = {
 
   getOneBooking: async (req, res) => {
     try {
-      const booking = await Booking.findById(req.params.id);
+      const booking = await Booking.findById(req.params.id).populate('apartmentId');
 
       res.status(200).json(booking);
     } catch (error) {

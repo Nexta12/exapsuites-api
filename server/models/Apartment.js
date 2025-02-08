@@ -7,11 +7,16 @@ const apartmentSchema = new mongoose.Schema(
     snippet: String,
     maxPeople: String,
     totalRooms: String,
+    totalBeds: String,
+    totalKitchens: String,
+    totalBathrooms: String,
+    totalBalcony: String,
+    totalParlour: String,
     price: Number,
     images: [{url: String}],
     bookingStatus: { 
       type: String, 
-      enum: ['reserved', 'confirmed', 'occupied', 'free'], 
+      enum: ['Booking Initiated', 'confirmed', 'occupied', 'free'], 
       default: 'free' 
     },
   },

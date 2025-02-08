@@ -12,12 +12,26 @@ module.exports = {
       const { startDate, endDate, adult } = req.body;
 
       if (!startDate || startDate === "") {
-        return res.status(422).send("startDate is required");
+        return res.status(422).send("Check In is required");
       }
 
       if (!endDate || endDate === "") {
-        return res.status(422).send("endDate is required");
+        return res.status(422).send("Check Out is required");
       }
+
+         // Parse the dates to ensure they are valid Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+  
+    // Check if the dates are valid
+    if (isNaN(start) || isNaN(end)) {
+       return res.status(422).send('Invalid Dates')
+    }
+  
+    // Ensure the endDate is after the startDate
+    if (end <= start) {
+      return res.status(422).send('Check Out Date must be in the future')
+    }
 
       if (!adult || adult === "") {
         return res.status(422).send("Total Adult is required");
@@ -29,8 +43,9 @@ module.exports = {
     }
   },
   BookingConfirmationValidator: async (req, res, next) => {
+      const{ bookingId } = req.params;
     try {
-      const { firstName, bookingId, lastName, email, phone, password } =
+      const { firstName, lastName, email, phone } =
         req.body;
 
       if (!bookingId || bookingId.trim() === "") {
@@ -60,10 +75,7 @@ module.exports = {
       // Check if the user exists
       const userExists = await User.findOne({ email });
       if (!userExists) {
-        // If not, hash the password and prepare it for the controller
-        if (!password || password.trim() === "") {
-          return res.status(422).json("Password is required for new users");
-        }
+        const password = process.env.DefaultPassword
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         req.body.password = hashedPassword;

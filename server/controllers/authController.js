@@ -113,9 +113,11 @@ module.exports = {
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
       }
+
       res
         .status(200).json({data: userDetails})
     } catch (error) {
+      console.log(error)
       res.status(500).send('Internal Server Error')
     }
   },

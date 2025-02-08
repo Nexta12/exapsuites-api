@@ -68,7 +68,6 @@ const saveUncompressibleFiles = async (updatedFileName, uploadedFile) => {
 exports.cloudinaryUploader = async (req, res, next) => {
   try {
     if (req.files) {
-      
       const fileCategories = ["images" ];
 
       // Initialize arrays
