@@ -50,7 +50,16 @@ const bookingSchema = new mongoose.Schema(
       type: Number, 
       required: true 
     },
-
+    currentPayment: {  // Amount currently been paid
+      type: Number, 
+    },
+    totalPayment: {  // Total amount paid so far
+      type: Number,
+    
+    },
+    totalBalance: {  // Total sum remaining to be paid
+      type: Number, 
+    },
     // Status of the booking
     status: { 
       type: String, 
@@ -61,7 +70,7 @@ const bookingSchema = new mongoose.Schema(
     // Payment status
     paymentStatus: { 
       type: String, 
-      enum: ['pending', 'paid', 'failed'], 
+      enum: ['pending', 'paid', 'failed', 'part payment'], 
       default: 'pending' 
     },
 

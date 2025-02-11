@@ -1,7 +1,8 @@
 const { deleteFromCloudinary } = require("../middlewares/fileUploadManager");
 const User = require("../models/User");
 const mongoose = require("mongoose");
-const bcrypt = require('bcryptjs')
+const bcrypt = require('bcryptjs');
+const { AdminMessageEmail } = require("../../utils/emailCalls");
 
 module.exports = {
   createUser: async (req, res) => {
@@ -16,13 +17,11 @@ module.exports = {
         req.body.profilPic = req.body.images[0].url;
       }
       
-      req.body.role = process.env.ADMINROLE
-      // Create user
       const newUser = await User.create(req.body);
 
       // Send success response
       AdminMessageEmail(
-        `A new admin user, ${req.body.firstName} ${req.body.lastName} with email: ${email} was created by ${req.user.firstName} ${req.user.lastName}, on Exapsuites website`
+        `A new admin user, ${req.body.firstName} ${req.body.lastName} with email: ${req.body.email} was created by ${req.user.firstName} ${req.user.lastName}, on Exapsuites website`
       );
 
       return res.status(201).json(newUser);
@@ -63,16 +62,41 @@ module.exports = {
     }
   },
   getAllUsers: async (req, res) => {
+    const { q, role, bookingStatus } = req.query; // Extract filters from query params
+  
     try {
-      const users = await User.find({
-        email: { $ne: process.env.SUPER_EMAIL },
-      });
-
-      res.status(200).send(users);
+      let filter = { email: { $ne: process.env.SUPER_EMAIL } };
+  
+      // Add role filtering
+      if (role) {
+        filter.role = role;
+      }
+  
+      // Add bookings filtering if bookingStatus is provided
+      if (bookingStatus) {
+        filter.bookings = { $elemMatch: { status: bookingStatus } };
+      }
+  
+      // If q is provided, attempt to parse and merge it into the filter
+      if (q) {
+        try {
+          const queryObject = JSON.parse(q);
+          filter = { ...filter, ...queryObject };
+        } catch (error) {
+          return res.status(400).json({ message: "Invalid query format" });
+        }
+      }
+  
+      const users = await User.find(filter).sort({createdAt: 'desc'});
+      res.status(200).json(users);
     } catch (error) {
-      res.status(500).json("Internal Server Error");
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
   },
+  
+  
+
   getOne: async (req, res) => {
     try {
       const user = await User.findById(req.params.id);

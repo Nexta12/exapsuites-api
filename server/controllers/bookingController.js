@@ -9,7 +9,10 @@ const {
   initializePayment,
   verifyPayment,
 } = require("../../utils/paystackGateway");
-const { BookingSuccessEmail, AdminMessageEmail } = require("../../utils/emailCalls");
+const {
+  BookingSuccessEmail,
+  AdminMessageEmail,
+} = require("../../utils/emailCalls");
 
 module.exports = {
   BookApartment: async (req, res) => {
@@ -84,8 +87,7 @@ module.exports = {
   ConfirmBooking: async (req, res) => {
     const { bookingId } = req.params;
 
-    const { firstName, lastName, email, phone, password, address } =
-      req.body;
+    const { firstName, lastName, email, phone, password, address } = req.body;
 
     try {
       // get the booking details
@@ -161,8 +163,156 @@ module.exports = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  InternalBooking: async (req, res) => {
+    const { apartmentId } = req.params;
+    const {
+      startDate,
+      endDate,
+      comment,
+      adult,
+      kids,
+      firstName,
+      lastName,
+      email,
+      phone,
+      address,
+    } = req.body;
 
-  UpdateBooking: async (req, res) => {},
+    try {
+      // Validate required fields
+      if (
+        !apartmentId ||
+        !startDate ||
+        !endDate ||
+        !firstName ||
+        !lastName ||
+        !email ||
+        !phone
+      ) {
+        return res.status(400).json("Missing required fields");
+      }
+
+      // Get the apartment details
+      const apartment = await Apartment.findById(apartmentId);
+      if (!apartment) {
+        return res.status(404).json("Apartment not found");
+      }
+
+      // Check apartment availability
+      if (apartment.bookingStatus !== "free") {
+        return res
+          .status(400)
+          .json("This apartment is not available for booking");
+      }
+
+      // Calculate total price
+      const totalPrice = calculateTotalPrice(
+        startDate,
+        endDate,
+        apartment.price
+      );
+
+      // Find or create the user
+      let user = await User.findOne({ email });
+      if (!user) {
+        user = await User.create({
+          firstName,
+          lastName,
+          email,
+          phone,
+          address,
+        });
+      }
+
+      // Create the booking
+      const booking = await Booking.create({
+        guestId: uuidv4(),
+        apartmentId,
+        startDate,
+        endDate,
+        totalPrice,
+        totalBalance: totalPrice, // total balance to equal total price initially
+        totalPayment: 0, //  Total sum paid at this level
+        comment,
+        adult,
+        kids,
+        reference: uuidv4().replace(/-/g, "").slice(0, 10), // generate unique reference code
+        status: "confirmed",
+        userId: user._id,
+        contactInfo: { firstName, lastName, email, phone, address },
+      });
+
+      // Update apartment status
+      apartment.bookingStatus = "confirmed";
+      apartment.confirmedAt = Date.now();
+      await apartment.save();
+
+      // Add booking to user's bookings array
+      user.bookings.push({ bookingId: booking._id, status: "confirmed" });
+      await user.save();
+
+      // Send success response
+      res.status(200).json(booking);
+    } catch (error) {
+      console.error("InternalBooking Error:", error);
+      res.status(500).json("Internal server error");
+    }
+  },
+
+  UpdateBooking: async (req, res) => {
+    const { bookingId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
+    try {
+      const { currentPayment, totalBalance, comment } = req.body;
+
+      const bookingData = await Booking.findById(bookingId);
+      // Determine payment status
+
+      const paymentStatus =
+        totalBalance && totalBalance > 0 ? "part payment" : "paid";
+
+      const sumOfPayments =
+        Number(currentPayment) + Number(bookingData.totalPayment);
+
+      const updatedBooking = await Booking.findByIdAndUpdate(
+        bookingId,
+        {
+          $set: {
+            currentPayment,
+            totalBalance,
+            comment,
+            status: "completed",
+            paymentStatus,
+            totalPayment: sumOfPayments, // Total sum already paid
+          },
+        },
+        { new: true }
+      );
+      if (!updatedBooking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      // Updatae the apartment as occupied
+      await Apartment.findByIdAndUpdate(
+        updatedBooking.apartmentId.toString(),
+        {
+          $set: {
+            bookingStatus: "occupied",
+          },
+        },
+        { new: true }
+      );
+
+      res.status(200).json("updated");
+    } catch (error) {
+      console.error("UpdateBooking Error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 
   BookingPayment: async (req, res) => {
     try {
@@ -216,15 +366,19 @@ module.exports = {
     try {
       const reference = req.query.reference;
 
-     
-
       // Check if this payment has been previously verified
-      const confirmedBooking = await Booking.findOne({reference, 
-        status: 'completed'})
+      const confirmedBooking = await Booking.findOne({
+        reference,
+        status: "completed",
+      });
 
-        if(confirmedBooking){
-          return res.status(422).json('Payment previously confirmed')
-        }
+      // const bookingData = await Booking.findOne({
+      //   reference,
+      // });
+
+      if (confirmedBooking) {
+        return res.status(422).json("Payment previously confirmed");
+      }
 
       // Verify Payment Reference
       await verifyPayment(reference, async (error, body) => {
@@ -234,9 +388,9 @@ module.exports = {
 
         returnedResponse = body.data;
 
-
-        const { reference, paid_at } = returnedResponse;
-        const { apartmentId, Invoice, bookingId, userId } = returnedResponse.metadata;
+        const { reference, paid_at , requested_amount} = returnedResponse;
+        const { apartmentId, Invoice, bookingId, userId } =
+          returnedResponse.metadata;
 
         // Update Booking in Database
         await Booking.findByIdAndUpdate(
@@ -245,6 +399,7 @@ module.exports = {
             $set: {
               paidAt: paid_at,
               reference,
+              totalPayment: requested_amount / 100,
               paymentStatus: "paid",
               status: "completed",
               invoice: Invoice,
@@ -273,21 +428,35 @@ module.exports = {
 
         // Send Both Dashboard and Email Notifications
 
-        const booking = await Booking.findById(bookingId).populate("apartmentId");
-       
+        const booking = await Booking.findById(bookingId).populate(
+          "apartmentId"
+        );
 
         const user = {
           firstName: booking.contactInfo.firstName,
           lastName: booking.contactInfo.lastName,
           email: booking.contactInfo.email,
-        }
+        };
         // Send Email
         await BookingSuccessEmail(user, booking);
-        await AdminMessageEmail(`There has been a successful online booking for <strong> ${booking.apartmentId.title}</strong> by <br> <strong> ${user.firstName} ${user.lastName}, </strong> <br> A successful payment of <strong>  ₦${booking.totalPrice} </strong>  was made via online platform, <br> Check In date is: <strong> ${DateFormatter(booking.startDate)} <strong>  and check out date is: <strong> ${DateFormatter(booking.endDate)}, </strong> a total of  <strong> ${booking.adult} adult(s) </strong> and  <strong> ${booking.kids} kid(s) </strong> `)
+        await AdminMessageEmail(
+          `There has been a successful online booking for <strong> ${
+            booking.apartmentId.title
+          }</strong> by <br> <strong> ${user.firstName} ${
+            user.lastName
+          }, </strong> <br> A successful payment of <strong>  ₦${
+            booking.totalPrice
+          } </strong>  was made via online platform, <br> Check In date is: <strong> ${DateFormatter(
+            booking.startDate
+          )} <strong>  and check out date is: <strong> ${DateFormatter(
+            booking.endDate
+          )}, </strong> a total of  <strong> ${
+            booking.adult
+          } adult(s) </strong> and  <strong> ${booking.kids} kid(s) </strong> `
+        );
 
         res.status(200).json("Payment Successfull");
       });
-
     } catch (error) {
       console.log(error);
       res.status(500).json(error);
@@ -295,7 +464,9 @@ module.exports = {
   },
   getAllBookings: async (req, res) => {
     try {
-      const bookings = await Booking.find({}).populate('apartmentId').sort({ createdAt: "desc" });
+      const bookings = await Booking.find({})
+        .populate("apartmentId")
+        .sort({ createdAt: "desc" });
 
       res.status(200).json(bookings);
     } catch (error) {
@@ -306,7 +477,9 @@ module.exports = {
 
   getOneBooking: async (req, res) => {
     try {
-      const booking = await Booking.findById(req.params.id).populate('apartmentId');
+      const booking = await Booking.findById(req.params.id).populate(
+        "apartmentId"
+      );
 
       res.status(200).json(booking);
     } catch (error) {
