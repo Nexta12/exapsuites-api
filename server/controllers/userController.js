@@ -3,6 +3,7 @@ const User = require("../models/User");
 const mongoose = require("mongoose");
 const bcrypt = require('bcryptjs');
 const { AdminMessageEmail } = require("../../utils/emailCalls");
+const Booking = require('../models/Booking')
 
 module.exports = {
   createUser: async (req, res) => {
@@ -87,28 +88,67 @@ module.exports = {
         }
       }
   
-      const users = await User.find(filter).sort({createdAt: 'desc'});
+    
+      const users = await User.find(filter)
+      .lean()
+      .sort({ 
+          role: 1,  // Ensures 'Admin' appears first (alphabetically higher roles are sorted first)
+          createdAt: -1 // Then sort by creation date (newest first)
+      });
+
       res.status(200).json(users);
+     
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Internal Server Error" });
     }
   },
-  
-  
+
 
   getOne: async (req, res) => {
     try {
-      const user = await User.findById(req.params.id);
-      res.status(200).send(user);
+      // Step 1: Retrieve the user document
+      const user = await User.findById(req.params.id).exec();
+  
+      if (!user) {
+        return res.status(404).json('User not found');
+      }
+  
+      // Step 2: Sort the bookings array manually (e.g., by createdAt in descending order)
+      user.bookings.sort((a, b) => b.createdAt - a.createdAt);
+  
+      // Step 3: Populate the bookingId field and its nested apartmentId field
+      const populatedBookings = await Promise.all(
+        user.bookings.map(async (booking) => {
+          const populatedBooking = await Booking.findById(booking.bookingId)
+            .populate('apartmentId') // Populate apartmentId inside bookingId
+            .exec();
+  
+          return {
+            ...booking.toObject(), // Convert Mongoose document to plain object
+            bookingId: populatedBooking, // Replace bookingId with the populated booking
+          };
+        })
+      );
+  
+      // Replace the original bookings array with the populated and sorted one
+      user.bookings = populatedBookings;
+  
+      // Optionally, extract the latest booking
+      const latestBooking = user.bookings.length > 0 ? user.bookings[0] : null;
+  
+      res.status(200).json({ user, latestBooking });
     } catch (error) {
-      res.status(500).json("Internal Server Error");
+      console.error(error);
+      res.status(500).json( 'Internal Server Error');
     }
   },
 
   updateUser: async (req, res) => {
     try {
       const { id } = req.params;
+
+      console.log(req.body)
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(404).json("Invalid user identifier");
@@ -120,6 +160,12 @@ module.exports = {
       if (!userToUpdate) {
         return res.status(404).json("User not found");
       }
+
+      const { keepExistingImages } = req.body;
+
+      if (keepExistingImages === 'true') {
+       delete req.body.images; // Remove images from req.body if keepExistingImages is true
+     }
 
       if (
         req.user.id !== id &&
@@ -148,7 +194,7 @@ module.exports = {
         "firstName",
         "email",
         "lastName",
-        "password",
+        "description",
         "role",
         "profilPic",
         "phone",

@@ -19,6 +19,8 @@ const bookingSchema = new mongoose.Schema(
     contactInfo: {
       firstName: { type: String},
       lastName: { type: String},
+      gender: { type: String,  enum: ['male', 'female', 'undisclosed'], 
+        default: 'undisclosed' },
       email: { type: String },
       address: { type: String },
       phone: { type: String },

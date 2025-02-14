@@ -4,10 +4,13 @@ const userSchema = new mongoose.Schema(
   {
     firstName: String,
     lastName: String,
+    gender: { type: String,  enum: ['male', 'female', 'undisclosed'], 
+      default: 'undisclosed' },
     profilPic: String,
     email: String,
-    password: String,
+    password: String, 
     phone: String,
+    description: String,
     address: String,
     role: { type: String, enum: ['Super Admin', 'Admin', 'Guest',], default: "Guest" },
     bookings: [

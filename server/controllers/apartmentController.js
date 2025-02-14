@@ -38,6 +38,12 @@ module.exports = {
     const { id } = req.params;
 
     try {
+       const { keepExistingImages } = req.body;
+
+       if (keepExistingImages === 'true') {
+        delete req.body.images; // Remove images from req.body if keepExistingImages is true
+      }
+
       await Apartment.findByIdAndUpdate(id, { $set: req.body }, { new: true });
 
       res.status(201).json("updated");

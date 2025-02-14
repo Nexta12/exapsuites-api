@@ -118,6 +118,8 @@ app.use('/api/apartment', require('./server/routes/apartment'))
 app.use('/api/booking', require('./server/routes/booking'))
 app.use('/api/notification', require('./server/routes/notification.routes'))
 app.use('/api/contact', require('./server/routes/contact.routes'))
+app.use('/api/stats', require('./server/routes/stats'))
+app.use('/api/expense', require('./server/routes/expenses'))
 
 app.use((req, res) => {
   res.send("Page Not Found");

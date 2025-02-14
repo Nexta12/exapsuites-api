@@ -87,7 +87,7 @@ module.exports = {
   ConfirmBooking: async (req, res) => {
     const { bookingId } = req.params;
 
-    const { firstName, lastName, email, phone, password, address } = req.body;
+    const { firstName, lastName, gender, email, phone, password, address } = req.body;
 
     try {
       // get the booking details
@@ -115,6 +115,7 @@ module.exports = {
           firstName,
           lastName,
           email,
+          gender,
           phone,
           password,
           address,
@@ -125,6 +126,7 @@ module.exports = {
       reservedBooking.contactInfo = {
         firstName: user.firstName,
         lastName: user.lastName,
+        gender: user.gender,
         email: user.email,
         phone: user.phone,
         address: user.address,
@@ -173,6 +175,7 @@ module.exports = {
       kids,
       firstName,
       lastName,
+      gender,
       email,
       phone,
       address,
@@ -220,6 +223,7 @@ module.exports = {
           lastName,
           email,
           phone,
+          gender,
           address,
         });
       }
@@ -239,7 +243,8 @@ module.exports = {
         reference: uuidv4().replace(/-/g, "").slice(0, 10), // generate unique reference code
         status: "confirmed",
         userId: user._id,
-        contactInfo: { firstName, lastName, email, phone, address },
+        paidAt: Date.now(),
+        contactInfo: { firstName, lastName, gender, email, phone, address },
       });
 
       // Update apartment status
@@ -313,6 +318,44 @@ module.exports = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  ExtendBooking : async (req, res) => {
+    const { bookingId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ error: "Invalid booking ID" });
+    }
+
+    try {
+      const { endDate, totalCost } = req.body;
+
+      const bookingData = await Booking.findById(bookingId);
+      // Determine payment status
+
+      const sumOfPayments = Number(bookingData.totalPrice) +  Number( totalCost );
+
+      const updatedBooking = await Booking.findByIdAndUpdate(
+        bookingId,
+        {
+          $set: {
+            endDate,
+            totalPrice : sumOfPayments,
+            totalBalance: totalCost ,
+            status: "confirmed",
+            paymentStatus: 'pending',
+          },
+        },
+        { new: true }
+      );
+      if (!updatedBooking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+
+      res.status(200).json(updatedBooking);
+    } catch (error) {
+      console.error("UpdateBooking Error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 
   BookingPayment: async (req, res) => {
     try {
@@ -371,10 +414,6 @@ module.exports = {
         reference,
         status: "completed",
       });
-
-      // const bookingData = await Booking.findOne({
-      //   reference,
-      // });
 
       if (confirmedBooking) {
         return res.status(422).json("Payment previously confirmed");
@@ -484,7 +523,47 @@ module.exports = {
       res.status(200).json(booking);
     } catch (error) {
       console.log(error);
-      return res.status(500).json({ message: "An error occurred" });
+      return res.status(500).json("An error occurred" );
     }
   },
+  deleteBooking: async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      // Step 1: Find the booking
+      const booking = await Booking.findById(id);
+      if (!booking) {
+        return res.status(404).json("Booking not found");
+      }
+  
+      // Step 2: Find the apartment and update its bookingStatus to 'free'
+      const apartment = await Apartment.findById(booking.apartmentId);
+      if (!apartment) {
+        return res.status(404).json( "Apartment not found");
+      }
+      apartment.bookingStatus = "free";
+      await apartment.save();
+  
+      // Step 3: Find the user and remove the booking from their bookings array
+      const user = await User.findById(booking.userId);
+      if (!user) {
+        return res.status(404).json( "User not found");
+      }
+  
+      // Filter out the deleted booking from the user's bookings array
+      user.bookings = user.bookings.filter(
+        (bookingItem) => bookingItem.bookingId.toString() !== id
+      );
+      await user.save();
+  
+      // Step 4: Delete the booking
+      await Booking.findByIdAndDelete(id);
+  
+      // Step 5: Return success response
+      return res.status(200).json( "Booking deleted successfully");
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json( "An error occurred");
+    }
+  }
 };

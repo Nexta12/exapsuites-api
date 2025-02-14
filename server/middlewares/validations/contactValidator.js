@@ -3,7 +3,7 @@ module.exports = {
   ValidateCntactForm: async (req, res, next) => {
     try {
 
-      const {  email, fullName, message  } = req.body;
+      const {  email, fullName, message, phone  } = req.body;
 
       if(!fullName || fullName === ""){
         return res.status(422).send("Your Name is required");
@@ -18,6 +18,10 @@ module.exports = {
       }
 
     
+      if(!phone|| phone === ""){
+        return res.status(422).send("Provide your contact phone");
+      }
+      
       if(!message|| message === ""){
         return res.status(422).send("Message cannot be empty");
       }
