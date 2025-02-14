@@ -1,3 +1,5 @@
+const { AdminMessageEmail } = require("../../utils/emailCalls");
+const { createNotification } = require("../../utils/NotifcationCalls");
 const Expense = require("../models/Expenses");
 module.exports = {
   create: async (req, res) => {
@@ -18,6 +20,8 @@ module.exports = {
         staff: req.user.id,
       });
 
+      AdminMessageEmail(`A New Expense Record, A new expense record  has been created by: ${req.user.firstName} ${req.user.lastName}: Amount: ₦ ${amount.toLocaleString()}`)
+      // Create Dashboard Notification
       res.status(201).json(expense);
     } catch (error) {
       console.log(error);
@@ -66,6 +70,11 @@ module.exports = {
       const { id } = req.params;
 
       await Expense.findByIdAndDelete(id);
+
+       // Send success response
+        
+      AdminMessageEmail(`Expense Record deleted, An expense record  has been deleted by: ${req.user.firstName} ${req.user.lastName}: Amount: ₦ ${amount.toLocaleString()}`)
+          
 
       res.status(200).json("deleted");
     } catch (error) {

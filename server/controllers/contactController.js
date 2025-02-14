@@ -1,3 +1,5 @@
+const { AdminMessageEmail } = require("../../utils/emailCalls");
+const { createNotification } = require("../../utils/NotifcationCalls");
 const Contact = require("../models/Contact");
 
 module.exports = {
@@ -6,6 +8,12 @@ module.exports = {
        try {
 
         const contactMesg = await Contact.create(req.body);
+
+         // Send success response
+      // Send success response
+      AdminMessageEmail(`A New Message, A new message from Exapsuites contact form: ${contactMesg.message} </br> sent By: ${contactMesg.fullName} `)
+      // Create Dashboard Notification
+      await createNotification('New User Registeration', `A new message from contact form ` )
 
         res.status(201).json(contactMesg)
         

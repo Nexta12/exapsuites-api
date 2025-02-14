@@ -108,7 +108,7 @@ module.exports = {
   getOne: async (req, res) => {
     try {
       // Step 1: Retrieve the user document
-      const user = await User.findById(req.params.id).exec();
+      const user = await User.findById(req.params.id).select('-password').exec();
   
       if (!user) {
         return res.status(404).json('User not found');

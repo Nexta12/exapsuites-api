@@ -6,7 +6,7 @@ module.exports = {
     try {
   
       const newApartment = await Apartment.create(req.body);
-   
+       
       res.status(201).json(newApartment);
     } catch (error) {
       console.log(error);
@@ -56,6 +56,13 @@ module.exports = {
     const { id } = req.params;
 
     try {
+
+      const apartment = await Apartment.findById(id);
+
+      if(apartment.bookingStatus !== 'free') {
+        return res.status(403).json('Apartment currently in use, cannot be deleted ')
+      }
+
      const apartmentToDelete = await Apartment.findByIdAndDelete(id);
      deleteFromCloudinary(apartmentToDelete.images);
 

@@ -3,6 +3,8 @@ const { generateAccessToken } = require("../middlewares/authorization");
 const User = require("../models/User")
 const passport = require('passport')
 const jwt = require("jsonwebtoken");
+const { DateFormatter } = require("../../utils/helpers");
+const { createNotification } = require("../../utils/NotifcationCalls");
 
 
 module.exports = {
@@ -17,7 +19,9 @@ module.exports = {
         const newUser = await User.create({email, password});
 
       // Send success response
-      AdminMessageEmail(`A new guest, with email: ${email} has registered on the Apartments website, `)
+      AdminMessageEmail(`A new guest, with email: ${email} has registered on the Apartments website, Date: ${DateFormatter(Date.now())} `)
+      // Create Dashboard Notification
+      await createNotification('New User Registeration', `A new guest, with email: ${email} just registered, Date: ${DateFormatter(Date.now())} ` )
 
       return res.status(201).json(newUser);
         

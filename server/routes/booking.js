@@ -13,5 +13,6 @@ router.get("/callback", bookingController.paymentCallback )
 router.get("/getAll",  mustBeSuperAdminOrAdmin, bookingController.getAllBookings  )
 router.get("/getOne/:id",  bookingController.getOneBooking  )
 router.delete("/delete/:id", mustBeSuperAdmin, bookingController.deleteBooking  )
+router.delete("/cancellation/:id", bookingController.cancelBooking  )
 
 module.exports = router

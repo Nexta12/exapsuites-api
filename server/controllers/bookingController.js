@@ -13,6 +13,7 @@ const {
   BookingSuccessEmail,
   AdminMessageEmail,
 } = require("../../utils/emailCalls");
+const { createNotification } = require("../../utils/NotifcationCalls");
 
 module.exports = {
   BookApartment: async (req, res) => {
@@ -76,6 +77,11 @@ module.exports = {
       // Update apartment's booking status to "booked"
       apartmentToBook.bookingStatus = "Booking Initiated";
       await apartmentToBook.save();
+
+       // Send success response
+       AdminMessageEmail(`Booking Initiated, A reservation process is initiated for ${apartmentToBook.title}  ${DateFormatter(Date.now())}  `)
+       // Create Dashboard Notification
+       await createNotification('Booking Initiated', `A reservation process is initiated for ${apartmentToBook.title}  ${DateFormatter(Date.now())} ` )
 
       res.status(201).json(newBooking);
     } catch (error) {
@@ -154,6 +160,11 @@ module.exports = {
         }
       );
       apartmentToBook.save();
+
+      // Send success response
+      AdminMessageEmail(`Booking Confirmed, A reservation for ${apartmentToBook.title} was confirmed by ${user.firstName} ${user.lastName}  ${DateFormatter(Date.now())}  `)
+      // Create Dashboard Notification
+      await createNotification('Booking Confirmed', `A reservation for ${apartmentToBook.title} was confirmed by ${user.firstName} ${user.lastName}  ${DateFormatter(Date.now())} ` )
 
       res.status(200).json({
         message: "Booking confirmed successfully",
@@ -256,6 +267,11 @@ module.exports = {
       user.bookings.push({ bookingId: booking._id, status: "confirmed" });
       await user.save();
 
+       // Send success response
+       AdminMessageEmail(`In House Booking, A reservation for ${apartment.title} was confirmed for ${user.firstName} ${user.lastName} by the customer care on  ${DateFormatter(Date.now())}  `)
+       // Create Dashboard Notification
+       await createNotification('Successful Booking', `A reservation for ${apartment.title} was confirmed for ${user.firstName} ${user.lastName} by the customer care on  ${DateFormatter(Date.now())}  ` )
+
       // Send success response
       res.status(200).json(booking);
     } catch (error) {
@@ -312,6 +328,7 @@ module.exports = {
         { new: true }
       );
 
+
       res.status(200).json("updated");
     } catch (error) {
       console.error("UpdateBooking Error:", error);
@@ -328,7 +345,7 @@ module.exports = {
     try {
       const { endDate, totalCost } = req.body;
 
-      const bookingData = await Booking.findById(bookingId);
+      const bookingData = await Booking.findById(bookingId).populate('apartmentId');
       // Determine payment status
 
       const sumOfPayments = Number(bookingData.totalPrice) +  Number( totalCost );
@@ -350,11 +367,41 @@ module.exports = {
         return res.status(404).json({ error: "Booking not found" });
       }
 
+         // Send success response
+         AdminMessageEmail(`Reservation Extension, The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)}  `)
+         // Create Dashboard Notification
+         await createNotification('Reservation Extension', ` The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)}  ` )
+
       res.status(200).json(updatedBooking);
     } catch (error) {
       console.error("UpdateBooking Error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
+  },
+  
+  cancelBooking: async (req, res) =>{
+      try {
+
+        const { id } = req.params;
+
+        const canceledBooking = await Booking.findById(id).populate('apartmentId')
+        const associatedApartment = await Apartment.findOne({_id: canceledBooking.apartmentId._id})
+           
+        associatedApartment.bookingStatus = 'free';
+        associatedApartment.save()
+
+       await Booking.findByIdAndDelete(id);
+           // Send success response
+      AdminMessageEmail(`Booking Cancellation, A booking process on ${associatedApartment.title} has been cancelled by a guest at booking confirmation stage, Date: ${DateFormatter(Date.now())} `)
+      // Create Dashboard Notification
+      await createNotification('Booking Cancellation', ` A booking process on ${associatedApartment.title} has been cancelled by a guest at booking confirmation stage, Date: ${DateFormatter(Date.now())} ` )
+
+        res.status(200).json('canceled')
+      } catch (error) {
+        console.log(error)
+        res.status(500).json("Internal Server Error")
+      }
+
   },
 
   BookingPayment: async (req, res) => {
@@ -479,7 +526,7 @@ module.exports = {
         // Send Email
         await BookingSuccessEmail(user, booking);
         await AdminMessageEmail(
-          `There has been a successful online booking for <strong> ${
+          `New Payment, There has been a successful online booking for <strong> ${
             booking.apartmentId.title
           }</strong> by <br> <strong> ${user.firstName} ${
             user.lastName
@@ -493,6 +540,22 @@ module.exports = {
             booking.adult
           } adult(s) </strong> and  <strong> ${booking.kids} kid(s) </strong> `
         );
+
+
+      // Create Dashboard Notification
+      await createNotification('New Reservation', `There has been a successful online booking for <strong> ${
+            booking.apartmentId.title
+          }</strong> by <br> <strong> ${user.firstName} ${
+            user.lastName
+          }, </strong> <br> A successful payment of <strong>  ₦${
+            booking.totalPrice
+          } </strong>  was made via online platform, <br> Check In date is: <strong> ${DateFormatter(
+            booking.startDate
+          )} <strong>  and check out date is: <strong> ${DateFormatter(
+            booking.endDate
+          )}, </strong> a total of  <strong> ${
+            booking.adult
+          } adult(s) </strong> and  <strong> ${booking.kids} kid(s) </strong> ` )
 
         res.status(200).json("Payment Successfull");
       });
@@ -558,6 +621,11 @@ module.exports = {
   
       // Step 4: Delete the booking
       await Booking.findByIdAndDelete(id);
+
+       // Send success response
+       AdminMessageEmail(`Reservation Deleted, A reservation detail of ${user.firstName} ${user.lastName}  was deleted  Date: ${DateFormatter(Date.now())}  `)
+       // Create Dashboard Notification
+       await createNotification('Reservation Deleted', `A reservation detail of ${user.firstName} ${user.lastName}  was deleted  Date: ${DateFormatter(Date.now())}` )
   
       // Step 5: Return success response
       return res.status(200).json( "Booking deleted successfully");
