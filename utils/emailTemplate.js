@@ -184,7 +184,6 @@ module.exports = {
      `;
   },
 
-
   ContactMessageEmailTemplate: (user) => {
     return `
        ${emailHeader("Message Recived")}
@@ -198,6 +197,28 @@ module.exports = {
         </p>
         <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
         Our team is committed to providing prompt and helpful support to address your questions or concerns. If your inquiry is urgent, please feel free to contact us directly via WhatsApp at +44 7742 088843.
+        </p>
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+          We appreciate your patience and look forward to assisting you shortly.
+        </p>
+
+        ${emailFooter()}
+     `;
+  },
+  ForgotPasswordTemplate: (otp) => {
+    return `
+       ${emailHeader("Password Reset OTP")}
+
+      
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+         You or someone else have requested for a password reset on our portal, kindly disregard this email if you did not make the request.
+        </p>
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+          Please use this OTP: <strong>${otp}</strong> to reset your password.
+        </p>
+
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+          Kindly know that this OTP expires in 15 Minutes
         </p>
         <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
           We appreciate your patience and look forward to assisting you shortly.
