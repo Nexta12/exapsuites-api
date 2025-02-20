@@ -19,24 +19,16 @@ module.exports = {
   },
 
 
-  mustBeSuperAdmin: (req, res, next) => {
-    if (req.user.role === "Super Admin") {
-      next();
-    } else {
-      return res
-        .status(401)
-        .json("You don't have sufficient access to perform the task");
+  allowedRoles: (roles) =>{
+    return (req, res, next) =>{
+      if (roles.includes(req.user.role)) {
+        next();
+      } else {
+        return res
+          .status(401)
+          .json("You don't have sufficient access to perform the task");
+      }
     }
-  },
-  mustBeSuperAdminOrAdmin: (req, res, next) => {
-    if (req.user.role === "Super Admin" || req.user.role === "Admin" ) {
-      next();
-    } else {
-      return res
-        .status(401)
-        .json("You don't have sufficient access to perform the task");
-    }
-   
   },
 
   generateAccessToken: (user, jwt) => {

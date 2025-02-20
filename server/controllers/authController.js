@@ -44,30 +44,35 @@ module.exports = {
     try {
       passport.authenticate("local", { session: true }, (err, user, info) => {
         if (err) {
-          return next(err);
+          console.error("Authentication error:", err);
+          return res.status(500).json("Internal Server Error");
         }
+  
         if (!user) {
-          return res.status(404).send(info.message);
+          // Authentication failed
+          return res.status(401).json(info.message || "Authentication failed");
         }
-
+  
         req.logIn(user, async (err) => {
           if (err) {
-            return next(err);
-          } else {
-            // Generate and Send Access Tokens to client:
-            const accessToken = generateAccessToken(user, jwt);
-            const { password, createdAt, updatedAt, ...payload } = user._doc;
-
-            return res.status(200).json({
-              message: "Login successfully",
-              accessToken,
-              data: payload,
-            });
+            console.error("Login error:", err);
+            return res.status(500).json("Internal Server Error");
           }
+  
+          // Generate and send access tokens to the client
+          const accessToken = generateAccessToken(user, jwt);
+          const { password, createdAt, updatedAt, ...payload } = user._doc;
+  
+          return res.status(200).json({
+            message: "Login successful",
+            accessToken,
+            data: payload,
+          });
         });
       })(req, res, next);
     } catch (err) {
-      res.status(500).json(err.message);
+      console.error("Login controller error:", err);
+      res.status(500).json("Internal Server Error");
     }
   },
   ForgotPassword: async (req, res) => {
@@ -103,11 +108,52 @@ module.exports = {
 
       // Store the hashed OTP and expiration time in the database
       const storedOtp = await OTP.create({ otp: hashedOTP, email, expiresIn });
-
       // Send the OTP to the user's email
        await ForgotPasswordEmail(generateOTP, email);
 
       res.status(201).json(storedOtp);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json("Internal Server Error");
+    }
+  },
+  ResetPassword: async (req, res) => {
+    try {
+      let { password, confirmPassword, email } = req.body;
+
+      email = email?.trim().toLowerCase();
+
+      // Validate inputs
+      if (!email || email === "") {
+        return res.status(403).json("Email Data Missing");
+      }
+      if (!password || password === "") {
+        return res.status(403).json("password Data Missing");
+      }
+      if (password !== confirmPassword) {
+        return res.status(403).json("Password do not match");
+      }
+
+      // Check if email exists
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(422).json("User don't exist");
+      }
+
+  
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      user.password = hashedPassword;
+      await user.save()
+
+      // Delete the userOTP record
+
+      await OTP.findOneAndDelete({email})
+
+      res.status(201).json('Password updated');
     } catch (error) {
       console.log(error);
       res.status(500).json("Internal Server Error");

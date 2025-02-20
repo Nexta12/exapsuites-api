@@ -1,6 +1,6 @@
 
 const transporter = require("../utils/emailServer");
-const { ConsultationBookingEmailTemplate, TrainingRegistrationSuccess, TrainingPayment, ContactMessageEmailTemplate, AdminEmailTemplate, BookingSuccessTemplate, ForgotPasswordTemplate } = require("./emailTemplate");
+const { AdminEmailTemplate, BookingSuccessTemplate, ForgotPasswordTemplate, BookingConfirmationTemplate, GuestGeneralTemplate } = require("./emailTemplate");
 
 module.exports = {
 
@@ -55,6 +55,46 @@ module.exports = {
         to: email,
         subject: "Password Reset OTP",
         html: ForgotPasswordTemplate(otp),
+        headers: {
+          "List-Unsubscribe":
+            "<https://exapsuites.com/unsubscribe>, <mailto:unsubscribe@exapsuites.com>",
+        },
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('Email Sent')
+    } catch (err) {
+      console.log(err)
+    }
+  },
+  BookingConfirmationEmail: async (user) => {
+    try {
+
+      const mailOptions = {
+        from: `"Exapsuites" <${process.env.USER_EMAIL}>`,
+        to: user.email,
+        subject: "Reservation Login details",
+        html: BookingConfirmationTemplate(user),
+        headers: {
+          "List-Unsubscribe":
+            "<https://exapsuites.com/unsubscribe>, <mailto:unsubscribe@exapsuites.com>",
+        },
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('Email Sent')
+    } catch (err) {
+      console.log(err)
+    }
+  },
+  GuestGeneralEmail: async (email, actionTaken) => {
+    try {
+
+      const mailOptions = {
+        from: `"Exapsuites" <${process.env.USER_EMAIL}>`,
+        to: email,
+        subject: "Reservation Login details",
+        html: GuestGeneralTemplate(actionTaken),
         headers: {
           "List-Unsubscribe":
             "<https://exapsuites.com/unsubscribe>, <mailto:unsubscribe@exapsuites.com>",

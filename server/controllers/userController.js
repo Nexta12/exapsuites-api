@@ -89,14 +89,32 @@ module.exports = {
       }
   
     
-      const users = await User.find(filter)
-      .lean()
-      .sort({ 
-          role: 1,  // Ensures 'Admin' appears first (alphabetically higher roles are sorted first)
-          createdAt: -1 // Then sort by creation date (newest first)
-      });
+      // const users = await User.find(filter)
+      // .lean()
+      // .sort({ 
+      //     role: 1,  
+      //     createdAt: -1 // Then sort by creation date (newest first)
+      // });
 
-      res.status(200).json(users);
+      const users = await User.find(filter).lean();
+
+      // Define role priority
+    const rolePriority = {
+      Manager: 0, // Highest priority
+      Admin: 1,   // Next priority
+      Guest: 2,   // Lowest priority
+    };
+    const sortedUsers = users.sort((a, b) => {
+      // Compare roles based on priority
+      if (rolePriority[a.role] < rolePriority[b.role]) return -1;
+      if (rolePriority[a.role] > rolePriority[b.role]) return 1;
+
+      // If roles are the same, sort by createdAt (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+      
+
+      res.status(200).json(sortedUsers);
      
     } catch (error) {
       console.error(error);
@@ -148,7 +166,6 @@ module.exports = {
     try {
       const { id } = req.params;
 
-      console.log(req.body)
 
       if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(404).json("Invalid user identifier");
@@ -219,6 +236,55 @@ module.exports = {
     } catch (error) {
       console.error(error); // Log the actual error for debugging
       res.status(500).json("Internal Server Error");
+    }
+  },
+  updateUserPassword: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { existingPassword, newPassword } = req.body;
+  
+      // Validate the user ID
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ error: "Invalid user identifier" });
+      }
+  
+      // Get the user from the database
+      const userToUpdate = await User.findById(id);
+  
+      if (!userToUpdate) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Authorization check
+      if (
+        req.user.id !== id &&
+        !(req.user.role === "Admin" || req.user.role === "Super Admin")
+      ) {
+        return res.status(403).json({ error: "You are not authorized" });
+      }
+  
+      // Verify the existing password
+      const isPasswordValid = await bcrypt.compare(
+        existingPassword,
+        userToUpdate.password
+      );
+  
+      if (!isPasswordValid) {
+        return res.status(400).json({ error: "Existing password is incorrect" });
+      }
+  
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+  
+      // Update the user's password
+      userToUpdate.password = hashedPassword;
+      await userToUpdate.save(); // Save the updated user document
+  
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error in updateUserPassword:", error);
+      res.status(500).json({ error: "Internal Server Error" });
     }
   },
 

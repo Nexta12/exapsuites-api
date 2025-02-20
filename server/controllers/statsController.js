@@ -84,6 +84,7 @@ module.exports = {
           $gte: new Date(`${year}-01-01`),
           $lt: new Date(`${year + 1}-01-01`),
         },
+        status: 'approved'
       });
       const bookings = await Bookings.find({
         status: "completed",

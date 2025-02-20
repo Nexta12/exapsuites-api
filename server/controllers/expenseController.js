@@ -1,4 +1,5 @@
 const { AdminMessageEmail } = require("../../utils/emailCalls");
+const { DateFormatter } = require("../../utils/helpers");
 const { createNotification } = require("../../utils/NotifcationCalls");
 const Expense = require("../models/Expenses");
 module.exports = {
@@ -19,9 +20,11 @@ module.exports = {
         purpose,
         staff: req.user.id,
       });
-
+      // Send Message To manager for approval
       AdminMessageEmail(`A New Expense Record, A new expense record  has been created by: ${req.user.firstName} ${req.user.lastName}: Amount: ₦ ${amount.toLocaleString()}`)
       // Create Dashboard Notification
+      await createNotification('A new Expense Record', ` A new expense record of ${amount} for ${purpose} has been created by ${req.user.firstName}  ${req.user.lastName} waiting for approval. Date: ${DateFormatter(Date.now())} ` )
+
       res.status(201).json(expense);
     } catch (error) {
       console.log(error);
@@ -30,9 +33,12 @@ module.exports = {
   },
   getAll: async (req, res) => {
     try {
-      const expenses = await Expense.find({})
-        .sort({ createdAt: "desc" })
-        .populate("staff", "-password -role -bookings -createdAt");
+        const expenses = await Expense.find({})
+      .sort({ createdAt: "desc" })
+      .populate([
+        { path: "staff", select: "-password -role -bookings -createdAt" },
+        { path: "verifiedBy", select: "-password -role -bookings -createdAt" }
+      ]);
 
       res.status(200).json(expenses);
     } catch (error) {
@@ -55,8 +61,19 @@ module.exports = {
   update: async (req, res) => {
     try {
       const { id } = req.params;
+      const expense = await Expense.findById(id)
+      const {  amount,
+        purpose, comment, status} = req.body
 
-      await Expense.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+      await Expense.findByIdAndUpdate(id, { $set: {
+        amount,
+        purpose,
+        comment,
+        status,
+        verifiedBy: req.user.id
+      } }, { new: true });
+
+      await createNotification(`Expense ${status}`, ` An expense record of ${expense.amount} for ${expense.purpose} has been ${status} by ${req.user.firstName}  ${req.user.lastName}. Date: ${DateFormatter(Date.now())} ` )
 
       res.status(200).json("Updated");
     } catch (error) {
@@ -70,11 +87,6 @@ module.exports = {
       const { id } = req.params;
 
       await Expense.findByIdAndDelete(id);
-
-       // Send success response
-        
-      AdminMessageEmail(`Expense Record deleted, An expense record  has been deleted by: ${req.user.firstName} ${req.user.lastName}: Amount: ₦ ${amount.toLocaleString()}`)
-          
 
       res.status(200).json("deleted");
     } catch (error) {

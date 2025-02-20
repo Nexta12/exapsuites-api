@@ -1,17 +1,27 @@
-const router = require('express').Router();
- const { authenticateUser, mustBeSuperAdminOrAdmin } = require('../middlewares/authorization');
+const router = require("express").Router();
+const {
+  authenticateUser,
+  allowedRoles,
+} = require("../middlewares/authorization");
 
-const dashboardStatsController = require('../controllers/statsController')
-
-router.get('/dashstats', authenticateUser, mustBeSuperAdminOrAdmin, dashboardStatsController.dashboardStats);
-
-router.get('/transactions', authenticateUser, mustBeSuperAdminOrAdmin, dashboardStatsController.transactionStats)
-
-router.get('/profile', 
-    // authenticateUser, mustBeSuperAdminOrAdmin,
-     dashboardStatsController.profilePieChart)
+const dashboardStatsController = require("../controllers/statsController");
+const { UserRole } = require("../../utils/constants");
 
 
+router.get("/dashstats",authenticateUser, allowedRoles([UserRole.superAdmin, UserRole.admin, UserRole.manager]), dashboardStatsController.dashboardStats);
 
+router.get(
+  "/transactions",
+  authenticateUser,
+  allowedRoles([UserRole.superAdmin, UserRole.admin, UserRole.manager]),
+  dashboardStatsController.transactionStats
+);
 
-module.exports = router
+router.get(
+  "/profile",
+  authenticateUser,
+  allowedRoles([UserRole.superAdmin, UserRole.admin, UserRole.manager]),
+  dashboardStatsController.profilePieChart
+);
+
+module.exports = router;

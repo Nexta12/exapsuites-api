@@ -12,6 +12,8 @@ const {
 const {
   BookingSuccessEmail,
   AdminMessageEmail,
+  BookingConfirmationEmail,
+  GuestGeneralEmail,
 } = require("../../utils/emailCalls");
 const { createNotification } = require("../../utils/NotifcationCalls");
 
@@ -95,8 +97,11 @@ module.exports = {
 
     const { firstName, lastName, gender, email, phone, password, address } = req.body;
 
+
     try {
       // get the booking details
+
+        // Check if the user exists
 
       const reservedBooking = await Booking.findById(bookingId);
       if (!reservedBooking) {
@@ -163,6 +168,16 @@ module.exports = {
 
       // Send success response
       AdminMessageEmail(`Booking Confirmed, A reservation for ${apartmentToBook.title} was confirmed by ${user.firstName} ${user.lastName}  ${DateFormatter(Date.now())}  `)
+      
+      // Send username and password to guest
+      const userEmailDetails = {
+        firstName,
+        lastName,
+        email,
+        password: process.env.DefaultPassword
+      }
+      await BookingConfirmationEmail(userEmailDetails)
+
       // Create Dashboard Notification
       await createNotification('Booking Confirmed', `A reservation for ${apartmentToBook.title} was confirmed by ${user.firstName} ${user.lastName}  ${DateFormatter(Date.now())} ` )
 
@@ -178,6 +193,9 @@ module.exports = {
   },
   InternalBooking: async (req, res) => {
     const { apartmentId } = req.params;
+    const password = process.env.DefaultPassword
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     const {
       startDate,
       endDate,
@@ -228,6 +246,9 @@ module.exports = {
 
       // Find or create the user
       let user = await User.findOne({ email });
+             
+             
+
       if (!user) {
         user = await User.create({
           firstName,
@@ -236,6 +257,7 @@ module.exports = {
           phone,
           gender,
           address,
+          password: hashedPassword 
         });
       }
 
@@ -266,6 +288,15 @@ module.exports = {
       // Add booking to user's bookings array
       user.bookings.push({ bookingId: booking._id, status: "confirmed" });
       await user.save();
+
+      //Send Login Details Email to the CheckedIn client
+      const userEmailDetails = {
+        firstName,
+        lastName,
+        email,
+        password: process.env.DefaultPassword
+      }
+      await BookingConfirmationEmail(userEmailDetails)
 
        // Send success response
        AdminMessageEmail(`In House Booking, A reservation for ${apartment.title} was confirmed for ${user.firstName} ${user.lastName} by the customer care on  ${DateFormatter(Date.now())}  `)
@@ -342,6 +373,7 @@ module.exports = {
       return res.status(400).json({ error: "Invalid booking ID" });
     }
 
+
     try {
       const { endDate, totalCost } = req.body;
 
@@ -363,6 +395,7 @@ module.exports = {
         },
         { new: true }
       );
+
       if (!updatedBooking) {
         return res.status(404).json({ error: "Booking not found" });
       }
@@ -370,7 +403,11 @@ module.exports = {
          // Send success response
          AdminMessageEmail(`Reservation Extension, The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)}  `)
          // Create Dashboard Notification
+
          await createNotification('Reservation Extension', ` The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)}  ` )
+
+          // Send Guest Extention Email
+         await GuestGeneralEmail(bookingData.contactInfo.email, `The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)} `)
 
       res.status(200).json(updatedBooking);
     } catch (error) {
@@ -408,6 +445,7 @@ module.exports = {
     try {
       const { bookingId } = req.body;
 
+
       // Get the booking
       const bookingToBePaidFor = await Booking.findById(bookingId);
 
@@ -438,8 +476,12 @@ module.exports = {
         if (error) {
           console.log(error);
         }
-
         returnedResponse = body.data; // set returned response data to a re-usable variable
+        // Update booking Reference for Extended booking
+        bookingToBePaidFor.reference = returnedResponse.reference
+        bookingToBePaidFor.save();
+
+        // Send response to client
         res.status(200).json({
           redirect_url: returnedResponse.authorization_url,
           access_code: returnedResponse.access_code,
@@ -455,6 +497,8 @@ module.exports = {
   paymentCallback: async (req, res) => {
     try {
       const reference = req.query.reference;
+
+   
 
       // Check if this payment has been previously verified
       const confirmedBooking = await Booking.findOne({
@@ -559,6 +603,7 @@ module.exports = {
 
         res.status(200).json("Payment Successfull");
       });
+
     } catch (error) {
       console.log(error);
       res.status(500).json(error);
@@ -571,6 +616,21 @@ module.exports = {
         .sort({ createdAt: "desc" });
 
       res.status(200).json(bookings);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: "An error occurred" });
+    }
+  },
+  getGuestAllBookings: async (req, res) => {
+    try {
+      const { userId } = req.params
+
+      const userBookings = await Booking.find({userId})
+        .populate("apartmentId")
+        .sort({ createdAt: "desc" })
+
+
+      res.status(200).json( userBookings);
     } catch (error) {
       console.log(error);
       return res.status(500).json({ message: "An error occurred" });

@@ -10,7 +10,7 @@ router.get("/test", userController.createSuperAdmin);
 router.get("/getAll", authenticateUser, userController.getAllUsers); 
 router.get("/getOne/:id", authenticateUser, userController.getOne); 
 router.put("/update/:id",  authenticateUser, ValidateUpdateUserForm, cloudinaryUploader, userController.updateUser);
-
+router.put("/update-password/:id",  authenticateUser, userController.updateUserPassword);
 router.delete("/delete/:id",  authenticateUser, userController.deleteUser);
 
 

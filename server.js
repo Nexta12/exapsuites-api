@@ -114,11 +114,11 @@ app.get('/', (req, res)=>{
 })
 app.use('/api/secure', require('./server/routes/auth'))
 app.use('/api/user', require('./server/routes/user'))
-app.use('/api/apartment', require('./server/routes/apartment'))
-app.use('/api/booking', require('./server/routes/booking'))
+ app.use('/api/apartment', require('./server/routes/apartment'))
+ app.use('/api/booking', require('./server/routes/booking'))
 app.use('/api/notification', require('./server/routes/notification.routes'))
 app.use('/api/contact', require('./server/routes/contact.routes'))
-app.use('/api/stats', require('./server/routes/stats'))
+ app.use('/api/stats', require('./server/routes/stats'))
 app.use('/api/expense', require('./server/routes/expenses'))
 
 app.use((req, res) => {

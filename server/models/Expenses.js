@@ -15,6 +15,13 @@ const expensesSchema = new mongoose.Schema(
       type: String,
       required: true, 
     },
+    status: {type: String, enum: ["pending", 'approved', 'declined'], default: 'pending'},
+    verifiedBy: {
+      type: mongoose.Types.ObjectId,
+      ref: "User", 
+    },
+    comment: String
+
   },
   { timestamps: true } 
 );

@@ -158,6 +158,44 @@ module.exports = {
         ${emailFooter()}
      `;
   },
+  BookingConfirmationTemplate: (user) => {
+    return `
+       ${emailHeader("Apartment Reservation")}
+
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left; font-weight: bold;">
+           Dear ${user.firstName} ${user.lastName},
+       </p>
+         <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+         Thank you for your confirming your reservation with us.
+         </p>
+
+         <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+         Please use this credentials to login for further directives/
+         </p>
+         
+          <ul style=" margin: 0; text-align: left; list-style: none;">
+                <li style="margin-bottom: 15px;">
+                    <span style="font-weight: bold; margin-right: 10px;">Email:</span>
+                    <span> ${user.email} </span>
+                 </li>
+                <li style="margin-bottom: 15px;">
+                    <span style="font-weight: bold; margin-right: 10px;">Password:</span>
+                    <span>${user.password} </span>
+                 </li>
+              
+                                                     
+          </ul>
+      
+         
+         
+      
+      <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+        For More Information, you can contact our call center or meet our customer experience manager at the reception, Cheers 🌻
+      </p>
+
+        ${emailFooter()}
+     `;
+  },
 
 
   CheckOutEmailTemplate: (user) => {
@@ -228,6 +266,21 @@ module.exports = {
      `;
   },
   AdminEmailTemplate: (actionTaken) => {
+    return `
+       ${emailHeader("New Notification from Exapsuites")}
+
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left; font-weight: bold;">
+           Dear Sir,
+       </p>
+
+        <p style="color:#455056; font-size:15px;line-height:24px; margin-top:10px; text-align: left;">
+         ${actionTaken}
+        </p>
+
+        ${emailFooter()}
+     `;
+  },
+  GuestGeneralTemplate: (actionTaken) => {
     return `
        ${emailHeader("New Notification from Exapsuites")}
 

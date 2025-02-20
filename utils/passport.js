@@ -15,11 +15,7 @@ exports.initialize = function initialize(passport) {
         if (!user) {
           return done(null, false, { message: "Wrong Credentials" });
         } else {
-          // check if user has a password or registered with google
-          if (!user.password) {
-            return done(null, false, { message: "Login With Google Instead" });
-          }
-
+    
           // check password correctness
           const correctPassword = await bcrypt.compare(password, user.password);
 

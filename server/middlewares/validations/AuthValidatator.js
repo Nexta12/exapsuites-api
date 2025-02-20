@@ -40,31 +40,28 @@ module.exports = {
   },
   ValidateLoginForm: async (req, res, next) => {
     try {
+      const { email, password } = req.body;
   
-
-      const {  email, password } = req.body;
-
-
       if (!email || email === "") {
-        return res.status(422).send("Please provide your email");
+        return res.status(422).json("Please provide your email");
       }
-
+  
       if (!validateEmail(email)) {
-        return res.status(422).send("Email is Invalid");
+        return res.status(422).json("Email is Invalid");
       }
-
-      if(!password || password === ""){
-        return res.status(422).send("Password is required");
+  
+      if (!password || password === "") {
+        return res.status(422).json("Password is required");
       }
-
-      if(password.length < 4 ){
-        return res.status(422).send("Password is too weak");
+  
+      if (password.length < 4) {
+        return res.status(422).json("Password is too weak");
       }
-     
-     
-      next();
+  
+      next(); // Proceed to the next middleware/controller
     } catch (error) {
-      res.status(422).send(error.message);
+      console.log(error);
+      res.status(500).json(error.message);
     }
   },
   ValidateUpdateUserForm: async (req, res, next) => {
