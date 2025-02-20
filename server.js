@@ -105,7 +105,7 @@ const allowedOrigins = [
   if (process.env.NODE_ENV === "development") {
     console.log("App running in development mode");
   } else {
-    console.log("App running in production mode");
+    console.log("App running in production mode!");
   }
 
 app.get('/', (req, res)=>{
