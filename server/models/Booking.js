@@ -47,25 +47,25 @@ const bookingSchema = new mongoose.Schema(
       required: true 
     },
 
-    // Total price for the booking
+    // Total cost for the selected Duration based on Apartment price
     totalPrice: { 
       type: Number, 
       required: true 
     },
-    currentPayment: {  // Amount currently been paid
+    currentPayment: {  // Amount currently been paid considering Instalment payment
       type: Number, 
     },
-    totalPayment: {  // Total amount paid so far
+    totalPayment: {  // Total Sum already been paid by guest considering instalment payment
       type: Number,
     
     },
-    totalBalance: {  // Total sum remaining to be paid
+    totalBalance: {  // Total sum remaining to be paid considering Instalment payment or Extension
       type: Number, 
     },
     // Status of the booking
     status: { 
       type: String, 
-      enum: ['pending', 'confirmed', 'canceled', 'completed'], 
+      enum: ['pending', 'confirmed', 'canceled', 'completed', 'expired'], 
       default: 'pending' 
     },
 

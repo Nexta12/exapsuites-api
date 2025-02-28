@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require("uuid");
 const calculateTotalPrice = require("../../utils/BookingCalculater");
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const bcrypt = require('bcryptjs')
 const { generateInvoice, DateFormatter } = require("../../utils/helpers");
 const {
   initializePayment,
@@ -70,6 +71,7 @@ module.exports = {
         startDate,
         endDate,
         totalPrice,
+        totalBalance:totalPrice, // Initially set the totalBalance as the total Price
         comment,
         adult,
         kids,
@@ -372,15 +374,16 @@ module.exports = {
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return res.status(400).json({ error: "Invalid booking ID" });
     }
-
+   
 
     try {
-      const { endDate, totalCost } = req.body;
+      const { endDate, extensionCost } = req.body;
 
+      // Get the booking to be extended
       const bookingData = await Booking.findById(bookingId).populate('apartmentId');
-      // Determine payment status
+   
 
-      const sumOfPayments = Number(bookingData.totalPrice) +  Number( totalCost );
+      const sumOfPayments = Number(bookingData.totalPrice) +  Number( extensionCost );
 
       const updatedBooking = await Booking.findByIdAndUpdate(
         bookingId,
@@ -388,7 +391,7 @@ module.exports = {
           $set: {
             endDate,
             totalPrice : sumOfPayments,
-            totalBalance: totalCost ,
+            totalBalance: extensionCost,
             status: "confirmed",
             paymentStatus: 'pending',
           },
@@ -407,9 +410,10 @@ module.exports = {
          await createNotification('Reservation Extension', ` The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)}  ` )
 
           // Send Guest Extention Email
-         await GuestGeneralEmail(bookingData.contactInfo.email, `The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)} `)
+         await GuestGeneralEmail("Reservation Details", bookingData.contactInfo.email, `The checkout date for ${bookingData.apartmentId.title} has been extended to  ${DateFormatter(endDate)} `)
 
       res.status(200).json(updatedBooking);
+      
     } catch (error) {
       console.error("UpdateBooking Error:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -458,9 +462,10 @@ module.exports = {
           .json("This Booking has not been confirmed or completed");
       }
 
+
       // Generate Invoice
       const Invoice = generateInvoice();
-      req.body.amount = bookingToBePaidFor.totalPrice;
+      req.body.amount = bookingToBePaidFor.totalBalance;
       req.body.email = bookingToBePaidFor.contactInfo.email;
       form = req.body;
       form.metadata = {
@@ -468,6 +473,7 @@ module.exports = {
         Invoice,
         bookingId: bookingToBePaidFor._id,
         userId: bookingToBePaidFor.userId,
+        totalPrice: bookingToBePaidFor.totalPrice
       };
 
       form.amount *= 100;
@@ -489,6 +495,7 @@ module.exports = {
           success: true,
         });
       });
+
     } catch (error) {
       console.error(error);
       res.status(500).json("Internal server error");
@@ -497,8 +504,6 @@ module.exports = {
   paymentCallback: async (req, res) => {
     try {
       const reference = req.query.reference;
-
-   
 
       // Check if this payment has been previously verified
       const confirmedBooking = await Booking.findOne({
@@ -519,7 +524,7 @@ module.exports = {
         returnedResponse = body.data;
 
         const { reference, paid_at , requested_amount} = returnedResponse;
-        const { apartmentId, Invoice, bookingId, userId } =
+        const { apartmentId, Invoice, bookingId, userId, totalPrice } =
           returnedResponse.metadata;
 
         // Update Booking in Database
@@ -530,9 +535,11 @@ module.exports = {
               paidAt: paid_at,
               reference,
               totalPayment: requested_amount / 100,
+              totalBalance: 0,
               paymentStatus: "paid",
               status: "completed",
               invoice: Invoice,
+              totalPayment:totalPrice,
             },
           },
           { new: true }
@@ -587,20 +594,7 @@ module.exports = {
 
 
       // Create Dashboard Notification
-      await createNotification('New Reservation', `There has been a successful online booking for <strong> ${
-            booking.apartmentId.title
-          }</strong> by <br> <strong> ${user.firstName} ${
-            user.lastName
-          }, </strong> <br> A successful payment of <strong>  ₦${
-            booking.totalPrice
-          } </strong>  was made via online platform, <br> Check In date is: <strong> ${DateFormatter(
-            booking.startDate
-          )} <strong>  and check out date is: <strong> ${DateFormatter(
-            booking.endDate
-          )}, </strong> a total of  <strong> ${
-            booking.adult
-          } adult(s) </strong> and  <strong> ${booking.kids} kid(s) </strong> ` )
-
+      await createNotification('New Reservation', `There has been a successful online booking and payment ` )
         res.status(200).json("Payment Successfull");
       });
 
@@ -623,13 +617,21 @@ module.exports = {
   },
   getGuestAllBookings: async (req, res) => {
     try {
-      const { userId } = req.params
+      const { userId } = req.params;
+      const { status } = req.query; // Get status from query parameters
+  
+      // Define the query object
+      const query = { userId };
 
-      const userBookings = await Booking.find({userId})
-        .populate("apartmentId")
-        .sort({ createdAt: "desc" })
-
-
+      // Add status to the query only if it is provided
+      if (status) {
+        query.status = status;
+      }
+      
+          // Find bookings based on the query
+    const userBookings = await Booking.find(query)
+    .populate("apartmentId")
+    .sort({ createdAt: "desc" });
       res.status(200).json( userBookings);
     } catch (error) {
       console.log(error);

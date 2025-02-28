@@ -1,4 +1,4 @@
-const { AdminMessageEmail } = require("../../utils/emailCalls");
+const { AdminMessageEmail, GuestGeneralEmail } = require("../../utils/emailCalls");
 const { createNotification } = require("../../utils/NotifcationCalls");
 const Contact = require("../models/Contact");
 
@@ -8,13 +8,9 @@ module.exports = {
        try {
 
         const contactMesg = await Contact.create(req.body);
-
-         // Send success response
       // Send success response
       AdminMessageEmail(`A New Message, A new message from Exapsuites contact form: ${contactMesg.message} </br> sent By: ${contactMesg.fullName} `)
-      // Create Dashboard Notification
-      await createNotification('New User Registeration', `A new message from contact form ` )
-
+     
         res.status(201).json(contactMesg)
         
        } catch (error) {
@@ -37,7 +33,7 @@ module.exports = {
   getOne: async (req, res) => {
      const { id } = req.params
     try {
-     const contact = await Contact.findById(id ).sort({createAt: 'desc'});
+     const contact = await Contact.findById(id ).sort({createAt: 'desc'}).populate({path: 'repliedBy', select: 'firstName lastName role'});
 
 
      // update the isRead status
@@ -79,6 +75,37 @@ module.exports = {
     } catch (error) {
       console.error("Error updating Contact:", error.message);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+  replyMessage: async (req, res) => {
+
+    try {
+      const { id } = req.params;
+      const { reply, email, repliedBy } = req.body;
+  
+      // Validate ID
+      if (!id) {
+        return res.status(400).json("Contact ID is required");
+      }
+      if (!reply ) {
+        return res.status(400).json("You cannot send an empty reply message");
+      }
+  
+      // Update the Contact status
+      await Contact.findByIdAndUpdate(
+        id,
+        { $set: { reply, repliedBy, replyDate: Date.now()} },
+        { new: true } // Return the updated document
+      );
+  
+      // Send Reply Email.
+      
+      await GuestGeneralEmail('Reply From Exapsuites', email, reply)
+      // Respond with the updated Contact
+      res.status(200).json('Reply Sent to user email');
+    } catch (error) {
+       console.log(error)
+      res.status(500).json("Internal Server Error");
     }
   },
   

@@ -87,13 +87,13 @@ module.exports = {
       console.log(err)
     }
   },
-  GuestGeneralEmail: async (email, actionTaken) => {
+  GuestGeneralEmail: async (subject, email, actionTaken) => {
     try {
 
       const mailOptions = {
         from: `"Exapsuites" <${process.env.USER_EMAIL}>`,
         to: email,
-        subject: "Reservation Login details",
+        subject: subject,
         html: GuestGeneralTemplate(actionTaken),
         headers: {
           "List-Unsubscribe":

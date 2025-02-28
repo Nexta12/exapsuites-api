@@ -120,6 +120,7 @@ app.use('/api/notification', require('./server/routes/notification.routes'))
 app.use('/api/contact', require('./server/routes/contact.routes'))
  app.use('/api/stats', require('./server/routes/stats'))
 app.use('/api/expense', require('./server/routes/expenses'))
+app.use("/api/cron", require("./server/services/BookingExpirator"));
 
 app.use((req, res) => {
   res.send("Page Not Found");
